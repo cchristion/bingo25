@@ -2,143 +2,192 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Bingo Game</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Bingo</title>
     <style>
+      /* Single Clean Theme */
       body {
-        font-family: Arial, sans-serif;
+        font-family: sans-serif;
         text-align: center;
-        background-color: #181a1b; /* Dark theme preserved manually */
-        color: #e8e6e3;
+        background: #f4f4f4;
+        color: #333;
+        user-select: none;
+        margin: 0;
+        padding: 10px;
       }
+      button {
+        padding: 10px 20px;
+        margin-bottom: 15px;
+        background: #333;
+        color: #fff;
+        border: 0;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 16px;
+      }
+      button:hover {
+        opacity: 0.9;
+      }
+
+      /* Grid Layout */
       table {
+        width: 95vw;
+        max-width: 500px;
+        margin: 0 auto;
         border-collapse: collapse;
-        margin: 20px auto;
+        table-layout: fixed;
       }
       td {
-        border: 1px solid #736b5e;
-        width: 60px;
-        height: 60px;
-        font-size: 18px;
+        border: 1px solid #333;
+        background: #fff;
+        width: 20%;
+        position: relative;
+        padding-bottom: 20%;
         cursor: pointer;
-        user-select: none;
+        touch-action: manipulation;
       }
+      td span {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: clamp(14px, 5vw, 24px);
+        font-weight: bold;
+      }
+
+      /* States */
       .marked {
-        background-color: #404400; /* Dark reader style preserved */
+        background: #ccc !important;
+      }
+      .marked span {
         text-decoration: line-through;
-        color: #b2aba1;
+        color: #666;
+      }
+
+      /* Header & Results */
+      .bingo {
+        margin: 10px 0;
+        font-size: clamp(30px, 10vw, 40px);
+        font-weight: 900;
       }
       .bingo span {
-        font-size: 30px;
-        margin: 0 6px;
-        color: #555;
+        margin: 0 5px;
+        color: #ddd;
+        transition: 0.3s;
       }
       .done {
+        color: #008000 !important;
         text-decoration: line-through;
-        color: #4caf50; /* Green */
       }
       #result {
-        font-size: 24px;
-        min-height: 1.5em;
+        font-size: 28px;
+        font-weight: bold;
+        color: #008000;
+        min-height: 40px;
+        margin-top: 10px;
       }
     </style>
   </head>
   <body>
-    <div class="bingo">
-      <span id="letter-0">B</span>
-      <span id="letter-1">I</span>
-      <span id="letter-2">N</span>
-      <span id="letter-3">G</span>
-      <span id="letter-4">O</span>
+    <button onclick="init()">New Game</button>
+    <div class="bingo" id="letters">
+      <span>B</span><span>I</span><span>N</span><span>G</span><span>O</span>
     </div>
-
     <table id="board"></table>
-    <p id="result"></p>
-
+    <div id="result"></div>
     <script>
-      const board = [];
-      const completedLines = new Set();
-      let bingoIndex = 0;
+      let board = [],
+        lastScore = 0,
+        ac;
+      const $ = (id) => document.getElementById(id);
 
-      // 1. Generate numbers 1–25
-      const numbers = Array.from({ length: 25 }, (_, i) => i + 1);
-
-      // 2. Fisher-Yates Shuffle (Correct Randomness)
-      for (let i = numbers.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
-      }
-
-      const table = document.getElementById("board");
-      let n = 0;
-
-      // 3. Build 5x5 board
-      for (let r = 0; r < 5; r++) {
-        board[r] = [];
-        const row = document.createElement("tr");
-
-        for (let c = 0; c < 5; c++) {
-          const cell = document.createElement("td");
-          cell.textContent = numbers[n++];
-          cell.onclick = () => {
-            if (bingoIndex >= 5) return; // Stop if game is won
-            cell.classList.toggle("marked");
-            checkLines();
-          };
-          board[r][c] = cell;
-          row.appendChild(cell);
+      function init() {
+        // Generate & Shuffle
+        const nums = Array.from({ length: 25 }, (_, i) => i + 1);
+        for (let i = 24; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [nums[i], nums[j]] = [nums[j], nums[i]];
         }
-        table.appendChild(row);
-      }
 
-      function checkLines() {
-        // Counter for lines found in THIS specific click
-        let newLinesFound = 0;
+        board = [];
+        lastScore = 0;
+        $("result").innerText = "";
+        $("board").innerHTML = "";
+        Array.from($("letters").children).forEach((s) =>
+          s.classList.remove("done")
+        );
 
-        // Helper to check array of cells
-        const isComplete = (cells) =>
-          cells.every((cell) => cell.classList.contains("marked"));
-
-        // Check rows
+        let n = 0;
         for (let r = 0; r < 5; r++) {
-          if (isComplete(board[r]) && !completedLines.has("r" + r)) {
-            completedLines.add("r" + r);
-            newLinesFound++;
+          let row = $("board").insertRow(),
+            bRow = [];
+          for (let c = 0; c < 5; c++) {
+            let cell = row.insertCell();
+            cell.innerHTML = `<span>${nums[n++]}</span>`;
+            cell.onclick = () => {
+              // Lazy load audio
+              if (!ac) {
+                ac = new (window.AudioContext || window.webkitAudioContext)();
+              }
+              if (ac.state === "suspended") ac.resume();
+
+              cell.classList.toggle("marked");
+              check();
+            };
+            bRow.push(cell);
           }
-        }
-
-        // Check columns
-        for (let c = 0; c < 5; c++) {
-          const column = board.map((row) => row[c]);
-          if (isComplete(column) && !completedLines.has("c" + c)) {
-            completedLines.add("c" + c);
-            newLinesFound++;
-          }
-        }
-
-        // Check diagonals
-        const diag1 = board.map((row, i) => row[i]);
-        const diag2 = board.map((row, i) => row[4 - i]);
-
-        if (isComplete(diag1) && !completedLines.has("d1")) {
-          completedLines.add("d1");
-          newLinesFound++;
-        }
-        if (isComplete(diag2) && !completedLines.has("d2")) {
-          completedLines.add("d2");
-          newLinesFound++;
-        }
-
-        // Update Score based on COUNT of new lines, not just boolean true/false
-        while (newLinesFound > 0 && bingoIndex < 5) {
-          document.getElementById(`letter-${bingoIndex}`).classList.add("done");
-          bingoIndex++;
-          newLinesFound--;
-        }
-
-        if (bingoIndex === 5) {
-          document.getElementById("result").textContent = "🎉 BINGO! 🎉";
+          board.push(bRow);
         }
       }
+
+      function check() {
+        const isWin = (arr) => arr.every((c) => c.classList.contains("marked"));
+        let wins = 0;
+        // Check Rows & Cols
+        for (let i = 0; i < 5; i++) {
+          if (isWin(board[i])) wins++;
+          if (isWin(board.map((r) => r[i]))) wins++;
+        }
+        // Check Diagonals
+        if (isWin(board.map((r, i) => r[i]))) wins++;
+        if (isWin(board.map((r, i) => r[4 - i]))) wins++;
+
+        let score = Math.min(wins, 5);
+        Array.from($("letters").children).forEach((s, i) =>
+          s.classList.toggle("done", i < score)
+        );
+
+        if (score === 5) {
+          $("result").innerText = "🎉 BINGO! 🎉";
+          if (lastScore < 5) playSound();
+        } else $("result").innerText = "";
+        lastScore = score;
+      }
+
+      function playSound() {
+        if (!ac) return;
+        [523, 659, 784, 1046].forEach((f, i) => {
+          let o = ac.createOscillator(),
+            g = ac.createGain(),
+            t = ac.currentTime + i * 0.1;
+          o.frequency.value = f;
+          o.type = "triangle";
+          o.connect(g);
+          g.connect(ac.destination);
+          o.start(t);
+          g.gain.setValueAtTime(0.1, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+          o.stop(t + 0.4);
+        });
+      }
+
+      // Start immediately
+      init();
     </script>
   </body>
 </html>
