@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Bingo Game</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        background-color: #181a1b; /* Dark theme preserved manually */
+        color: #e8e6e3;
+      }
+      table {
+        border-collapse: collapse;
+        margin: 20px auto;
+      }
+      td {
+        border: 1px solid #736b5e;
+        width: 60px;
+        height: 60px;
+        font-size: 18px;
+        cursor: pointer;
+        user-select: none;
+      }
+      .marked {
+        background-color: #404400; /* Dark reader style preserved */
+        text-decoration: line-through;
+        color: #b2aba1;
+      }
+      .bingo span {
+        font-size: 30px;
+        margin: 0 6px;
+        color: #555;
+      }
+      .done {
+        text-decoration: line-through;
+        color: #4caf50; /* Green */
+      }
+      #result {
+        font-size: 24px;
+        min-height: 1.5em;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bingo">
+      <span id="letter-0">B</span>
+      <span id="letter-1">I</span>
+      <span id="letter-2">N</span>
+      <span id="letter-3">G</span>
+      <span id="letter-4">O</span>
+    </div>
+
+    <table id="board"></table>
+    <p id="result"></p>
+
+    <script>
+      const board = [];
+      const completedLines = new Set();
+      let bingoIndex = 0;
+
+      // 1. Generate numbers 1–25
+      const numbers = Array.from({ length: 25 }, (_, i) => i + 1);
+
+      // 2. Fisher-Yates Shuffle (Correct Randomness)
+      for (let i = numbers.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
+      }
+
+      const table = document.getElementById("board");
+      let n = 0;
+
+      // 3. Build 5x5 board
+      for (let r = 0; r < 5; r++) {
+        board[r] = [];
+        const row = document.createElement("tr");
+
+        for (let c = 0; c < 5; c++) {
+          const cell = document.createElement("td");
+          cell.textContent = numbers[n++];
+          cell.onclick = () => {
+            if (bingoIndex >= 5) return; // Stop if game is won
+            cell.classList.toggle("marked");
+            checkLines();
+          };
+          board[r][c] = cell;
+          row.appendChild(cell);
+        }
+        table.appendChild(row);
+      }
+
+      function checkLines() {
+        // Counter for lines found in THIS specific click
+        let newLinesFound = 0;
+
+        // Helper to check array of cells
+        const isComplete = (cells) =>
+          cells.every((cell) => cell.classList.contains("marked"));
+
+        // Check rows
+        for (let r = 0; r < 5; r++) {
+          if (isComplete(board[r]) && !completedLines.has("r" + r)) {
+            completedLines.add("r" + r);
+            newLinesFound++;
+          }
+        }
+
+        // Check columns
+        for (let c = 0; c < 5; c++) {
+          const column = board.map((row) => row[c]);
+          if (isComplete(column) && !completedLines.has("c" + c)) {
+            completedLines.add("c" + c);
+            newLinesFound++;
+          }
+        }
+
+        // Check diagonals
+        const diag1 = board.map((row, i) => row[i]);
+        const diag2 = board.map((row, i) => row[4 - i]);
+
+        if (isComplete(diag1) && !completedLines.has("d1")) {
+          completedLines.add("d1");
+          newLinesFound++;
+        }
+        if (isComplete(diag2) && !completedLines.has("d2")) {
+          completedLines.add("d2");
+          newLinesFound++;
+        }
+
+        // Update Score based on COUNT of new lines, not just boolean true/false
+        while (newLinesFound > 0 && bingoIndex < 5) {
+          document.getElementById(`letter-${bingoIndex}`).classList.add("done");
+          bingoIndex++;
+          newLinesFound--;
+        }
+
+        if (bingoIndex === 5) {
+          document.getElementById("result").textContent = "🎉 BINGO! 🎉";
+        }
+      }
+    </script>
+  </body>
+</html>
