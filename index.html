@@ -111,6 +111,48 @@
     </div>
     <table id="board"></table>
     <div id="result"></div>
+    <details
+      style="
+        margin: 20px auto;
+        max-width: 400px;
+        text-align: left;
+        border: 1px solid #333;
+        background: #fff;
+        cursor: pointer;
+      "
+    >
+      <summary
+        style="
+          padding: 15px;
+          font-weight: bold;
+          background: #eee;
+          outline: none;
+        "
+      >
+        How to Play ? (Click to Open)
+      </summary>
+
+      <div style="padding: 15px; border-top: 1px solid #333; cursor: default">
+        <ol style="padding-left: 20px; line-height: 1.6; margin: 0">
+          <li>
+            <strong>Start:</strong> Everyone opens the game on their own phone
+            to get a unique board.
+          </li>
+          <li>
+            <strong>Play:</strong> Take turns shouting a number.
+            <ul style="margin: 5px 0">
+              <li>Player A shouts: <em>"I pick 7!"</em></li>
+              <li><strong>Everyone</strong> finds 7 and clicks it.</li>
+              <li>Player B shouts the next number.</li>
+            </ul>
+          </li>
+          <li>
+            <strong>Win:</strong> The first person to get
+            <strong>5 lines</strong> and see "BINGO" wins!
+          </li>
+        </ol>
+      </div>
+    </details>
     <script>
       let board = [],
         lastScore = 0,
