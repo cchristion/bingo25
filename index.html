@@ -8,7 +8,6 @@
     />
     <title>Bingo</title>
     <style>
-      /* Single Clean Theme */
       body {
         font-family: sans-serif;
         text-align: center;
@@ -29,9 +28,6 @@
         font-weight: bold;
         font-size: 16px;
       }
-      button:hover {
-        opacity: 0.9;
-      }
 
       /* Grid Layout */
       table {
@@ -42,13 +38,14 @@
         table-layout: fixed;
       }
       td {
-        border: 1px solid #333;
+        border: 1px solid #333; /* Permanent Grid Border */
         background: #fff;
         width: 20%;
         position: relative;
         padding-bottom: 20%;
         cursor: pointer;
         touch-action: manipulation;
+        transition: background 0.2s;
       }
       td span {
         position: absolute;
@@ -62,11 +59,25 @@
 
       /* States */
       .marked {
-        background: #ccc !important;
+        background: #ccc;
       }
       .marked span {
         text-decoration: line-through;
         color: #666;
+      }
+
+      /* Winning Highlight - FIXED */
+      .win {
+        background: #d4edda !important; /* Light Green Background */
+        /* We use box-shadow inset to draw a border INSIDE the cell. 
+       This prevents conflicts with the main black grid lines. */
+        box-shadow: inset 0 0 0 3px #28a745;
+        z-index: 1; /* Ensures shadow sits on top */
+      }
+      .win span {
+        color: #155724;
+        text-decoration: none;
+        font-weight: 900;
       }
 
       /* Header & Results */
@@ -81,13 +92,13 @@
         transition: 0.3s;
       }
       .done {
-        color: #008000 !important;
+        color: #28a745 !important;
         text-decoration: line-through;
       }
       #result {
         font-size: 28px;
         font-weight: bold;
-        color: #008000;
+        color: #28a745;
         min-height: 40px;
         margin-top: 10px;
       }
@@ -107,7 +118,6 @@
       const $ = (id) => document.getElementById(id);
 
       function init() {
-        // Generate & Shuffle
         const nums = Array.from({ length: 25 }, (_, i) => i + 1);
         for (let i = 24; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
@@ -130,12 +140,10 @@
             let cell = row.insertCell();
             cell.innerHTML = `<span>${nums[n++]}</span>`;
             cell.onclick = () => {
-              // Lazy load audio
               if (!ac) {
                 ac = new (window.AudioContext || window.webkitAudioContext)();
               }
               if (ac.state === "suspended") ac.resume();
-
               cell.classList.toggle("marked");
               check();
             };
@@ -146,17 +154,39 @@
       }
 
       function check() {
-        const isWin = (arr) => arr.every((c) => c.classList.contains("marked"));
+        const isComplete = (arr) =>
+          arr.every((c) => c.classList.contains("marked"));
         let wins = 0;
-        // Check Rows & Cols
-        for (let i = 0; i < 5; i++) {
-          if (isWin(board[i])) wins++;
-          if (isWin(board.map((r) => r[i]))) wins++;
-        }
-        // Check Diagonals
-        if (isWin(board.map((r, i) => r[i]))) wins++;
-        if (isWin(board.map((r, i) => r[4 - i]))) wins++;
+        const winningCells = new Set();
 
+        const registerWin = (arr) => {
+          wins++;
+          arr.forEach((cell) => winningCells.add(cell));
+        };
+
+        // Check Rows
+        for (let r = 0; r < 5; r++)
+          if (isComplete(board[r])) registerWin(board[r]);
+
+        // Check Cols
+        for (let c = 0; c < 5; c++) {
+          let col = board.map((r) => r[c]);
+          if (isComplete(col)) registerWin(col);
+        }
+
+        // Check Diagonals
+        let d1 = board.map((r, i) => r[i]);
+        if (isComplete(d1)) registerWin(d1);
+
+        let d2 = board.map((r, i) => r[4 - i]);
+        if (isComplete(d2)) registerWin(d2);
+
+        // Apply Highlight Styles
+        board.flat().forEach((cell) => {
+          cell.classList.toggle("win", winningCells.has(cell));
+        });
+
+        // Update Score & UI
         let score = Math.min(wins, 5);
         Array.from($("letters").children).forEach((s, i) =>
           s.classList.toggle("done", i < score)
@@ -185,8 +215,6 @@
           o.stop(t + 0.4);
         });
       }
-
-      // Start immediately
       init();
     </script>
   </body>
